@@ -1,0 +1,105 @@
+#!/bin/env ruby
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+$LOAD_PATH << "#{Dir.pwd}/lib"
+require "optparse"
+require "openai"
+
+options = {}
+OptionParser.new do |opts|
+  opts.banner = "Usage: ai-client [options]"
+
+  opts.on("--history-file [HISTORYFILE]", "Chat history file") do |history_file|
+    options[:history_file] = history_file
+  end
+
+  opts.on("--prompt PROMPTSTRING", "Prompt string") do |prompt_string|
+    options[:prompt] = prompt_string
+  end
+
+  opts.on("--model MODEL", "Model string") do |model_string|
+    options[:model] = model_string
+  end
+
+  opts.on("--token [TOKEN]", "OpenAI token") do |token|
+    options[:token] = token
+  end
+
+  opts.on("--png [IMAGE]", "PNG file") do |png|
+    options[:image] = png
+  end
+
+  opts.on("--role [ROLE]", "Role override") do |role|
+    options[:role] = role
+  end
+end.parse!
+
+if options[:prompt].nil?
+  STDERR.puts "Error: Missing prompt"
+  exit 1
+end
+
+def print_history(session)
+  history = session.dump
+  history.each do |entry|
+  end
+end
+
+openai = OpenAI.new(options)
+session = openai.new_session()
+
+session.enable_auto_sync(options[:history_file]) do
+  session.append do |sess|
+    sess.new_message("system")
+        .text("You are a helpfull assistent.\n")
+  end
+end
+
+role = options[:role]
+role ||= "user"
+
+session.append do |sess|
+  sess.new_message()
+      .role(role)
+      .image(options[:image])
+      .text(options[:prompt])
+end
+
+response = openai.new_request do |req|
+  req.attach_session(session)
+  #  req.attach_tools(ToolFunctions.new())
+end
+
+if response.success?
+  if response.completion
+    puts response.completion
+    session.append do |sess|
+      sess.new_message()
+          .role("assistant")
+          .text(response.completion)
+    end
+  end
+
+  exit(0)
+end
+
+exit(1)
