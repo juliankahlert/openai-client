@@ -1,0 +1,5 @@
+---
+openai:
+  params:
+    max-tokens: 250
+  model: gpt-4o-2024-05-13
